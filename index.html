@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNS Record Lookup Tool</title>
+    <title>All-in-One DNS & Live WHOIS Tool</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; padding: 0 20px; background-color: #f4f6f9; color: #333; }
         .container { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -12,102 +12,116 @@
         input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
         button { padding: 12px 24px; background-color: #2ea44f; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
         button:hover { background-color: #2c974b; }
-        .notice { background-color: #e1f5fe; border-left: 4px solid #0288d1; padding: 12px; margin-bottom: 20px; font-size: 14px; border-radius: 0 4px 4px 0; }
         .section-title { font-weight: bold; font-size: 18px; margin-top: 20px; color: #0366d6; border-bottom: 2px solid #eaecef; padding-bottom: 5px; }
         pre { background: #272822; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; font-family: 'Courier New', Courier, monospace; min-height: 40px; white-space: pre-wrap; }
         .loading { color: #666; font-style: italic; }
+        .whois-grid { display: grid; grid-template-columns: 150px 1fr; gap: 8px; background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #2ea44f; font-size: 15px; }
+        .whois-label { font-weight: bold; color: #555; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>DNS Record Lookup Tool</h2>
+    <h2>All-in-One DNS & Live WHOIS Tool</h2>
     
-    <div class="notice">
-        <strong>Note on WHOIS data:</strong> Registration timelines (purchase date, expiry, and registrar) require backend network protocols. To view those metrics, click the external link generated in the WHOIS section below.
-    </div>
-
     <div class="input-group">
-        <input type="text" id="domainInput" placeholder="Enter domain (e.g., github.com)" required>
-        <button onclick="lookupDomain()">Search DNS</button>
+        <input type="text" id="domainInput" placeholder="Enter domain (e.g., domain.com)" required>
+        <button onclick="lookupDomain()">Search Domain</button>
     </div>
 
-    <!-- WHOIS External Navigation Links -->
-    <div class="section-title">1. Registration & WHOIS Data (External)</div>
-    <p>To check purchase history, registration date, expiry date, and registrar metadata, use this quick link:</p>
-    <div id="whoisLinkArea"><span class="loading">Enter a domain above to generate a lookup link.</span></div>
+    <!-- Live Automated WHOIS Breakdown -->
+    <div class="section-title">1. Live Registry Data (WHOIS via RDAP)</div>
+    <div class="whois-grid" id="whoisDisplay">
+        <div class="whois-label">Registrar:</div><div id="wRegistrar">No request yet.</div>
+        <div class="whois-label">Purchased On:</div><div id="wCreated">No request yet.</div>
+        <div class="whois-label">Expires On:</div><div id="wExpires">No request yet.</div>
+    </div>
 
-    <!-- Live Dynamic DNS Records -->
+    <!-- Live DNS Server Configurations -->
     <div class="section-title">2. A Records (IP Addresses)</div>
     <pre id="aRecords">No data requested yet.</pre>
 
     <div class="section-title">3. MX Records (Mail Servers)</div>
     <pre id="mxRecords">No data requested yet.</pre>
 
-    <div class="section-title">4. NS Records (Nameservers)</div>
+    <div class="section-title">4. NAMESERVER (NS Records)</div>
     <pre id="nsRecords">No data requested yet.</pre>
 </div>
 
 <script>
+// Helper function to extract dates/entities from standardized open RDAP JSON schemas
+function findEventDate(events, actionString) {
+    if(!events) return "Not available";
+    const found = events.find(e => e.eventAction === actionString);
+    return found ? new Date(found.eventDate).toUTCString() : "Not found";
+}
+
+async function fetchWhoisData(domain) {
+    try {
+        // Query the public open-source Verisign RDAP registry engine natively
+        const res = await fetch(`verisign.com{domain}`);
+        if (!res.ok) throw new Error("Domain registry not found (.com/.net only via this endpoint)");
+        const data = await res.json();
+
+        // Extract registrar name
+        let registrar = "Unknown Registrar";
+        if (data.entities && data.entities[0] && data.entities[0].vcardArray) {
+            const vcard = data.entities[0].vcardArray[1];
+            const fnRecord = vcard.find(item => item[0] === 'fn');
+            if (fnRecord) registrar = fnRecord[3];
+        }
+
+        // Parse precise historical timelines
+        document.getElementById('wRegistrar').innerText = registrar;
+        document.getElementById('wCreated').innerText = findEventDate(data.events, 'registration');
+        document.getElementById('wExpires').innerText = findEventDate(data.events, 'expiration');
+
+    } catch (err) {
+        document.getElementById('wRegistrar').innerText = "Error tracking domain details.";
+        document.getElementById('wCreated').innerText = "Make sure it is a valid .com or .net domain.";
+        document.getElementById('wExpires').innerText = err.message;
+    }
+}
+
 async function fetchDNSRecord(domain, type) {
     try {
-        // Querying Google's public Trusted DNS-over-HTTPS API endpoint
         const response = await fetch(`dns.google{domain}&type=${type}`);
         const data = await response.json();
-        
-        if (!data.Answer) {
-            return `No ${type} records found or mapped for this domain.`;
-        }
-        
-        // Format the structured JSON responses neatly into lines
-        return data.Answer.map(record => {
-            return `Type: ${type} | TTL: ${record.TTL} | Data: ${record.data}`;
-        }).join('\n');
-        
-    } catch (error) {
-        return `Error retrieving ${type} record: ${error.message}`;
+        if (!data.Answer) return `No active ${type} paths found.`;
+        return data.Answer.map(r => `Data: ${r.data} (TTL: ${r.TTL})`).join('\n');
+    } catch (e) {
+        return `Error pulling record: ${e.message}`;
     }
 }
 
 async function lookupDomain() {
-    let domain = document.getElementById('domainInput').value.trim();
-    
-    // Quick validation to strip out standard web prefixes if pasted
+    let domain = document.getElementById('domainInput').value.trim().toLowerCase();
     domain = domain.replace(/^(https?:\/\/)?(www\.)?/, '');
     
     if (!domain) {
-        alert('Please provide a valid domain name first.');
+        alert('Please write a valid domain target first.');
         return;
     }
 
-    // Update status indicators to loading states
-    document.getElementById('aRecords').className = 'loading';
-    document.getElementById('mxRecords').className = 'loading';
-    document.getElementById('nsRecords').className = 'loading';
-    document.getElementById('aRecords').innerText = 'Fetching A records...';
-    document.getElementById('mxRecords').innerText = 'Fetching MX records...';
-    document.getElementById('nsRecords').innerText = 'Fetching NS records...';
+    // Trigger placeholder loading visual styles
+    document.getElementById('wRegistrar').innerText = "Fetching registrar data...";
+    document.getElementById('wCreated').innerText = "Reading timelines...";
+    document.getElementById('wExpires').innerText = "Calculating dates...";
+    document.getElementById('aRecords').innerText = 'Loading IP configurations...';
+    document.getElementById('mxRecords').innerText = 'Loading mail handling paths...';
+    document.getElementById('nsRecords').innerText = 'Loading nameserver records...';
 
-    // 1. Update the external WHOIS navigation target
-    const encodedDomain = encodeURIComponent(domain);
-    document.getElementById('whoisLinkArea').innerHTML = `
-        <a href="icann.org{encodedDomain}" target="_blank" style="color: #0366d6; font-weight: bold; text-decoration: underline;">
-            Click here to check WHOIS details for ${domain} on ICANN Lookup ↗
-        </a>
-    `;
-
-    // 2. Concurrently dispatch queries for the target DNS configurations
+    // Dispatches network async operations all at once
+    fetchWhoisData(domain);
+    
     const aData = await fetchDNSRecord(domain, 'A');
     document.getElementById('aRecords').innerText = aData;
-    document.getElementById('aRecords').className = '';
 
     const mxData = await fetchDNSRecord(domain, 'MX');
     document.getElementById('mxRecords').innerText = mxData;
-    document.getElementById('mxRecords').className = '';
 
     const nsData = await fetchDNSRecord(domain, 'NS');
     document.getElementById('nsRecords').innerText = nsData;
-    document.getElementById('nsRecords').className = '';
 }
 </script>
 
