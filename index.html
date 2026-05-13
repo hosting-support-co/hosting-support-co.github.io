@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS Record Lookup Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 30px auto; padding: 0 20px; background-color: #f4f6f9; color: #333; }
+        .container { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; color: #24292e; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        button { padding: 12px 24px; background-color: #2ea44f; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #2c974b; }
+        .notice { background-color: #e1f5fe; border-left: 4px solid #0288d1; padding: 12px; margin-bottom: 20px; font-size: 14px; border-radius: 0 4px 4px 0; }
+        .section-title { font-weight: bold; font-size: 18px; margin-top: 20px; color: #0366d6; border-bottom: 2px solid #eaecef; padding-bottom: 5px; }
+        pre { background: #272822; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; font-family: 'Courier New', Courier, monospace; min-height: 40px; white-space: pre-wrap; }
+        .loading { color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>DNS Record Lookup Tool</h2>
+    
+    <div class="notice">
+        <strong>Note on WHOIS data:</strong> Registration timelines (purchase date, expiry, and registrar) require backend network protocols. To view those metrics, click the external link generated in the WHOIS section below.
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="domainInput" placeholder="Enter domain (e.g., github.com)" required>
+        <button onclick="lookupDomain()">Search DNS</button>
+    </div>
+
+    <!-- WHOIS External Navigation Links -->
+    <div class="section-title">1. Registration & WHOIS Data (External)</div>
+    <p>To check purchase history, registration date, expiry date, and registrar metadata, use this quick link:</p>
+    <div id="whoisLinkArea"><span class="loading">Enter a domain above to generate a lookup link.</span></div>
+
+    <!-- Live Dynamic DNS Records -->
+    <div class="section-title">2. A Records (IP Addresses)</div>
+    <pre id="aRecords">No data requested yet.</pre>
+
+    <div class="section-title">3. MX Records (Mail Servers)</div>
+    <pre id="mxRecords">No data requested yet.</pre>
+
+    <div class="section-title">4. NS Records (Nameservers)</div>
+    <pre id="nsRecords">No data requested yet.</pre>
+</div>
+
+<script>
+async function fetchDNSRecord(domain, type) {
+    try {
+        // Querying Google's public Trusted DNS-over-HTTPS API endpoint
+        const response = await fetch(`dns.google{domain}&type=${type}`);
+        const data = await response.json();
+        
+        if (!data.Answer) {
+            return `No ${type} records found or mapped for this domain.`;
+        }
+        
+        // Format the structured JSON responses neatly into lines
+        return data.Answer.map(record => {
+            return `Type: ${type} | TTL: ${record.TTL} | Data: ${record.data}`;
+        }).join('\n');
+        
+    } catch (error) {
+        return `Error retrieving ${type} record: ${error.message}`;
+    }
+}
+
+async function lookupDomain() {
+    let domain = document.getElementById('domainInput').value.trim();
+    
+    // Quick validation to strip out standard web prefixes if pasted
+    domain = domain.replace(/^(https?:\/\/)?(www\.)?/, '');
+    
+    if (!domain) {
+        alert('Please provide a valid domain name first.');
+        return;
+    }
+
+    // Update status indicators to loading states
+    document.getElementById('aRecords').className = 'loading';
+    document.getElementById('mxRecords').className = 'loading';
+    document.getElementById('nsRecords').className = 'loading';
+    document.getElementById('aRecords').innerText = 'Fetching A records...';
+    document.getElementById('mxRecords').innerText = 'Fetching MX records...';
+    document.getElementById('nsRecords').innerText = 'Fetching NS records...';
+
+    // 1. Update the external WHOIS navigation target
+    const encodedDomain = encodeURIComponent(domain);
+    document.getElementById('whoisLinkArea').innerHTML = `
+        <a href="icann.org{encodedDomain}" target="_blank" style="color: #0366d6; font-weight: bold; text-decoration: underline;">
+            Click here to check WHOIS details for ${domain} on ICANN Lookup ↗
+        </a>
+    `;
+
+    // 2. Concurrently dispatch queries for the target DNS configurations
+    const aData = await fetchDNSRecord(domain, 'A');
+    document.getElementById('aRecords').innerText = aData;
+    document.getElementById('aRecords').className = '';
+
+    const mxData = await fetchDNSRecord(domain, 'MX');
+    document.getElementById('mxRecords').innerText = mxData;
+    document.getElementById('mxRecords').className = '';
+
+    const nsData = await fetchDNSRecord(domain, 'NS');
+    document.getElementById('nsRecords').innerText = nsData;
+    document.getElementById('nsRecords').className = '';
+}
+</script>
+
+</body>
+</html>
