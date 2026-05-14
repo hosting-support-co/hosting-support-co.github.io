@@ -103,7 +103,7 @@
     <script type="text/javascript">
         // Replace with your PUBLIC KEY
         (function() {
-            emailjs.init("YOUR_PUBLIC_KEY_HERE"); 
+            emailjs.init("isNVS6on9BL-DK_mr"); 
         })();
 
         function sendNotify() {
@@ -129,7 +129,7 @@
             };
 
             // Replace with your SERVICE ID and TEMPLATE ID
-            emailjs.send('YOUR_SERVICE_ID_HERE', 'YOUR_TEMPLATE_ID_HERE', templateParams)
+            emailjs.send('service_1uwuhqs', 'template_zhmnmws', templateParams)
                 .then(function(response) {
                    console.log('SUCCESS!', response.status, response.text);
                    statusDiv.innerHTML = "✅ Notification Sent Successfully!";
