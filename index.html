@@ -1,144 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>POS Sales List</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laundry Shop - Pickup Request</title>
+    
+    <!-- 1. EMAIL JS LIBRARY -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: turquoise;
-    }
+    <style>
+        /* Modern & Clean Styling */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eef2f7;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
 
-    .container {
-      width: 80%;
-      margin: 40px auto;
-      background-color: white;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
 
-    h1 {
-      text-align: center;
-      color: #00796b;
-    }
+        h2 {
+            color: #0056b3;
+            margin-top: 0;
+            text-align: center;
+        }
 
-    .pos-info {
-      text-align: center;
-      margin-bottom: 20px;
-      color: #333;
-    }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box; /* Ensures padding doesn't affect width */
+            font-size: 14px;
+        }
 
-    th {
-      background-color: #009688;
-      color: white;
-      padding: 12px;
-    }
+        input:focus, textarea:focus {
+            border-color: #0056b3;
+            outline: none;
+        }
 
-    td {
-      padding: 12px;
-      text-align: center;
-      border-bottom: 1px solid #ddd;
-    }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
 
-    tr:hover {
-      background-color: #f1f1f1;
-    }
+        button:hover {
+            background-color: #003d80;
+        }
 
-    .total {
-      text-align: right;
-      font-size: 20px;
-      font-weight: bold;
-      margin-top: 20px;
-      color: #00796b;
-    }
-
-    .button {
-      display: block;
-      width: 180px;
-      margin: 25px auto 0;
-      padding: 12px;
-      background-color: #009688;
-      color: white;
-      text-align: center;
-      text-decoration: none;
-      border-radius: 8px;
-      font-weight: bold;
-    }
-
-    .button:hover {
-      background-color: #00796b;
-    }
-  </style>
+        .status-msg {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
 
-  <div class="container">
-    <h1>POS Sales List</h1>
+    <div class="container">
+        <h2>🧺 Laundry Pickup</h2>
+        <p style="text-align: center; color: #666;">Notify the shop owner for pickup</p>
 
-    <div class="pos-info">
-      <p><strong>Store Name:</strong> Turquoise Mini Mart</p>
-      <p><strong>Date:</strong> January 25, 2026</p>
-      <p><strong>Cashier:</strong> John Smith</p>
+        <!-- HTML Form Elements -->
+        <label for="order_number">Order ID / Name</label>
+        <input type="text" id="order_number" placeholder="e.g. #789 or John Doe">
+
+        <label for="pickup_address">Pickup Address</label>
+        <textarea id="pickup_address" rows="3" placeholder="Enter full address for pickup..."></textarea>
+
+        <button onclick="sendNotify()">Send Request to Owner</button>
+        
+        <div id="status" class="status-msg"></div>
     </div>
 
-    <table>
-      <tr>
-        <th>No.</th>
-        <th>Product Name</th>
-        <th>Quantity</th>
-        <th>Price</th>
-        <th>Total</th>
-      </tr>
+    <!-- 2. JAVASCRIPT LOGIC -->
+    <script type="text/javascript">
+        // Replace with your PUBLIC KEY
+        (function() {
+            emailjs.init("YOUR_PUBLIC_KEY_HERE"); 
+        })();
 
-      <tr>
-        <td>1</td>
-        <td>Milk</td>
-        <td>2</td>
-        <td>$3.00</td>
-        <td>$6.00</td>
-      </tr>
+        function sendNotify() {
+            const statusDiv = document.getElementById("status");
+            const orderNum = document.getElementById("order_number").value;
+            const address = document.getElementById("pickup_address").value;
 
-      <tr>
-        <td>2</td>
-        <td>Bread</td>
-        <td>1</td>
-        <td>$2.50</td>
-        <td>$2.50</td>
-      </tr>
+            // Simple check to make sure fields aren't empty
+            if (!orderNum || !address) {
+                alert("Please fill out both the Order ID and the Address!");
+                return;
+            }
 
-      <tr>
-        <td>3</td>
-        <td>Eggs</td>
-        <td>1</td>
-        <td>$4.00</td>
-        <td>$4.00</td>
-      </tr>
+            // Update button status
+            statusDiv.innerHTML = "Sending...";
+            statusDiv.style.color = "blue";
 
-      <tr>
-        <td>4</td>
-        <td>Orange Juice</td>
-        <td>2</td>
-        <td>$5.00</td>
-        <td>$10.00</td>
-      </tr>
-    </table>
+            // Prepare the data to be sent
+            // Make sure these names match the {{}} tags in your EmailJS template!
+            const templateParams = {
+                order_number: orderNum,
+                pickup_address: address
+            };
 
-    <div class="total">
-      Grand Total: $22.50
-    </div>
-
-    <a href="#" class="button">Print Receipt</a>
-  </div>
+            // Replace with your SERVICE ID and TEMPLATE ID
+            emailjs.send('YOUR_SERVICE_ID_HERE', 'YOUR_TEMPLATE_ID_HERE', templateParams)
+                .then(function(response) {
+                   console.log('SUCCESS!', response.status, response.text);
+                   statusDiv.innerHTML = "✅ Notification Sent Successfully!";
+                   statusDiv.style.color = "green";
+                   
+                   // Reset inputs
+                   document.getElementById("order_number").value = "";
+                   document.getElementById("pickup_address").value = "";
+                }, function(error) {
+                   console.log('FAILED...', error);
+                   statusDiv.innerHTML = "❌ Failed to send. Check console.";
+                   statusDiv.style.color = "red";
+                });
+        }
+    </script>
 
 </body>
 </html>
